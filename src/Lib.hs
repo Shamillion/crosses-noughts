@@ -14,10 +14,8 @@ instance Show Player where
   show Player1 = "X"
   show Player2 = "O"
 
-player1 :: String
+player1, player2 :: String
 player1 = show Player1
-
-player2 :: String
 player2 = show Player2
 
 createButton :: UI Element
@@ -43,9 +41,9 @@ newGameButtonStyleStr str =
   \ width: 450px; margin-top: 50px; "
     ++ str
 
-nextSign :: [Char] -> [Char]
-nextSign sign
-  | sign == player1 = player2
+nextPlayer :: [Char] -> [Char]
+nextPlayer player
+  | player == player1 = player2
   | otherwise = player1
 
 blockButtonStyleStr :: [Char]

@@ -21,18 +21,19 @@ import Graphics.UI.Threepenny.Core
     (#+),
   )
 import Lib
-    ( setPropertiesButton,
-      buildButton,
-      newGameButtonStyleStr,
-      nextSign,
-      blockButtonStyleStr,
-      player1 )
+  ( blockButtonStyleStr,
+    buildButton,
+    newGameButtonStyleStr,
+    nextPlayer,
+    player1,
+    setPropertiesButton,
+  )
 
 setup :: Window -> UI ()
 setup window = do
   _ <- return window # set title "Crosses-Noughts"
 
-  mark <- liftIO $ newIORef player1
+  turn <- liftIO $ newIORef player1
 
   buttonA1 <- buildButton
   buttonA2 <- buildButton
@@ -53,7 +54,7 @@ setup window = do
         "text-align: center; font-size: 50px; min-height: 75px; width: 450px; \
         \ margin-bottom: 50px; pointer-events : none;"
 
-  newGame <-
+  newGameButton <-
     UI.button
       # set UI.text "New Game"
       # set UI.value "newGame"
@@ -65,10 +66,10 @@ setup window = do
   let changeVisibilityNewGameButton :: Bool -> UI Element
       changeVisibilityNewGameButton bool = do
         let str = if bool then "" else "display: none;"
-        pure newGame # set (UI.attr "style") (newGameButtonStyleStr str)
+        pure newGameButton # set (UI.attr "style") (newGameButtonStyleStr str)
 
       gameButtonsLs = [buttonA1, buttonA2, buttonA3, buttonB1, buttonB2, buttonB3, buttonC1, buttonC2, buttonC3]
-      buttonLs = display : newGame : gameButtonsLs
+      buttonLs = display : newGameButton : gameButtonsLs
       winLineH1 = [buttonA1, buttonA2, buttonA3]
       winLineH2 = [buttonB1, buttonB2, buttonB3]
       winLineH3 = [buttonC1, buttonC2, buttonC3]
@@ -90,7 +91,7 @@ setup window = do
         void $
           if bool
             then pure display # set UI.text "Draw!" >> changeVisibilityNewGameButton True
-            else pure display # set UI.text ("Turn " ++ nextSign player)
+            else pure display # set UI.text ("Turn " ++ nextPlayer player)
 
       checkGame :: String -> UI ()
       checkGame player = do
@@ -101,40 +102,41 @@ setup window = do
             sequence_ $ (# set (UI.attr "style") blockButtonStyleStr . pure) <$> gameButtonsLs
           else checkDraw player
 
+      createRow :: [Element] -> UI Element
       createRow = row . fmap pure
+
       rowA = createRow winLineH1
       rowB = createRow winLineH2
       rowC = createRow winLineH3
 
       gameBody =
-        column [pure display, rowA, rowB, rowC, pure newGame]
+        column [pure display, rowA, rowB, rowC, pure newGameButton]
           # set (UI.attr "style") "position: fixed; left: 30%; top : 10%;"
 
       clearField = do
         sequence_ $ setPropertiesButton . pure <$> gameButtonsLs
-        liftIO . writeIORef mark $ player1
+        liftIO . writeIORef turn $ player1
         _ <- changeVisibilityNewGameButton False
         void $ pure display # set UI.text ("Turn " ++ player1)
 
+      clickOnButton :: Element -> UI ()
       clickOnButton button = on UI.click button $
         const $ do
           val <- get UI.value button
           case val of
             "newGame" -> clearField
             _ -> do
-              sign <- liftIO $ readIORef mark
-              _ <- liftIO . writeIORef mark . nextSign $ sign
+              player <- liftIO $ readIORef turn
+              _ <- liftIO . writeIORef turn . nextPlayer $ player
               _ <-
-                pure button # set UI.text sign
-                  # set UI.value sign
+                pure button # set UI.text player
+                  # set UI.value player
                   # set (UI.attr "style") blockButtonStyleStr
-              valLs <- sequence $ get UI.value <$> gameButtonsLs -- delete
-              liftIO $ print valLs -- delete
-              checkGame sign
+              checkGame player
 
   _ <- getBody window #+ [gameBody]
 
-  void . sequence $ clickOnButton <$> buttonLs
+  void . sequence $ clickOnButton <$> buttonLs -- main loop.
 
 main :: IO ()
 main = startGUI defaultConfig setup
