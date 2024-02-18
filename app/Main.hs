@@ -1,43 +1,38 @@
 module Main (main) where
 
-import Control.Monad ( void )
+import Control.Monad (void)
 import Data.IORef (newIORef, readIORef, writeIORef)
 import qualified Graphics.UI.Threepenny as UI
 import Graphics.UI.Threepenny.Core
-    ( defaultConfig,
-      (#),
-      (#+),
-      column,
-      get,
-      getBody,
-      on,
-      row,
-      set,
-      title,
-      startGUI,
-      MonadIO(liftIO),
-      Element,
-      UI,
-      Window )
-
+  ( Element,
+    MonadIO (liftIO),
+    UI,
+    Window,
+    column,
+    defaultConfig,
+    get,
+    getBody,
+    on,
+    row,
+    set,
+    startGUI,
+    title,
+    (#),
+    (#+),
+  )
+import Lib
+    ( setPropertiesButton,
+      buildButton,
+      newGameButtonStyleStr,
+      nextSign,
+      blockButtonStyleStr,
+      player1 )
 
 setup :: Window -> UI ()
 setup window = do
   _ <- return window # set title "Crosses-Noughts"
 
-  mark <- liftIO $ newIORef "X"
-
-  let createButton = UI.button
-      setPropertiesButton btn =
-        btn
-          # set UI.text "."
-          # set UI.value "empty"
-          # set (UI.attr "type") "button"
-          # set
-            (UI.attr "style")
-            "min-width: 150px; min-height: 150px; font-size: 100px; \
-            \ color: rgba(0, 0, 0, 0); pointer-events : auto;"
-      buildButton = setPropertiesButton createButton
+  mark <- liftIO $ newIORef player1
 
   buttonA1 <- buildButton
   buttonA2 <- buildButton
@@ -51,17 +46,12 @@ setup window = do
 
   display <-
     UI.button
-      # set UI.text "Turn X"
+      # set UI.text ("Turn " ++ player1)
       # set (UI.attr "type") "button"
       # set
         (UI.attr "style")
         "text-align: center; font-size: 50px; min-height: 75px; width: 450px; \
         \ margin-bottom: 50px; pointer-events : none;"
-
-  let newGameButtonStyleStr str =
-        "text-align: center; font-size: 50px; min-height: 75px; \
-        \ width: 450px; margin-top: 50px; "
-          ++ str
 
   newGame <-
     UI.button
@@ -75,7 +65,7 @@ setup window = do
   let changeVisibilityNewGameButton :: Bool -> UI Element
       changeVisibilityNewGameButton bool = do
         let str = if bool then "" else "display: none;"
-        pure newGame # set (UI.attr "style") (newGameButtonStyleStr str) 
+        pure newGame # set (UI.attr "style") (newGameButtonStyleStr str)
 
       gameButtonsLs = [buttonA1, buttonA2, buttonA3, buttonB1, buttonB2, buttonB3, buttonC1, buttonC2, buttonC3]
       buttonLs = display : newGame : gameButtonsLs
@@ -88,12 +78,6 @@ setup window = do
       winLineC1 = [buttonA1, buttonB2, buttonC3]
       winLineC2 = [buttonA3, buttonB2, buttonC1]
       winLines = [winLineH1, winLineH2, winLineH3, winLineV1, winLineV2, winLineV3, winLineC1, winLineC2]
-
-      nextSign sign
-        | sign == "X" = "O"
-        | otherwise = "X"
-
-      blockButtonStyleStr = "min-width: 150px; min-height: 150px; font-size: 100px; pointer-events: none;"
 
       isWin :: String -> UI Bool
       isWin player = or <$> mapM (fmap (all (== player)) . mapM (get UI.value)) winLines
@@ -128,9 +112,9 @@ setup window = do
 
       clearField = do
         sequence_ $ setPropertiesButton . pure <$> gameButtonsLs
-        liftIO . writeIORef mark $ "X"
+        liftIO . writeIORef mark $ player1
         _ <- changeVisibilityNewGameButton False
-        void $ pure display # set UI.text "Turn X"
+        void $ pure display # set UI.text ("Turn " ++ player1)
 
       clickOnButton button = on UI.click button $
         const $ do
@@ -144,10 +128,10 @@ setup window = do
                 pure button # set UI.text sign
                   # set UI.value sign
                   # set (UI.attr "style") blockButtonStyleStr
-              valLs <- sequence $ get UI.value <$> gameButtonsLs  -- delete
-              liftIO $ print valLs                                -- delete
+              valLs <- sequence $ get UI.value <$> gameButtonsLs -- delete
+              liftIO $ print valLs -- delete
               checkGame sign
-  
+
   _ <- getBody window #+ [gameBody]
 
   void . sequence $ clickOnButton <$> buttonLs
